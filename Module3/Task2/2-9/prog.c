@@ -98,7 +98,6 @@ int main(int argc, char* argv[]) { // argv = "ls | head -3 | tail -1"
                 exit(EXIT_FAILURE);
                 break;
             case 0: // child
-                //printf("\n%s: r-%d, w-%d\n", arg[0], fd2, fd1[1]);
                 if (dup2(fd2, 0) == -1) {
                     perror("Stdin");
                     exit(EXIT_FAILURE);
@@ -109,12 +108,11 @@ int main(int argc, char* argv[]) { // argv = "ls | head -3 | tail -1"
                         exit(EXIT_FAILURE);
                     }
                 }
+                //printf("\n%s: r-%d, w-%d\n", arg[0], fd2, fd1[1]);
                 if (execv(path, arg) == -1) {
                     perror("EXE");
                     exit(EXIT_FAILURE);
                 }
-                printf("\n%s: r-%d, w-%d\n", arg[0], fd2, fd1[1]);
-                exit(EXIT_SUCCESS);
             default: // parent
                 wait(&w);
                 fd2 = fd1[0];
