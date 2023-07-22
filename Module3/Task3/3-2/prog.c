@@ -1,0 +1,21 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+
+int main() {
+    signal(SIGINT, SIG_IGN);
+    FILE* f;
+    int i = 0;
+    while (1) {
+        f = fopen("res.txt", "a");
+        if (!f) {
+            perror("Open file");
+            exit(EXIT_FAILURE);
+        }
+        fprintf(f, "%d\n", i);
+        fclose(f);
+        i++;
+        sleep(1);
+    }
+}
