@@ -1,19 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <sys/sem.h>
-#include <sys/ipc.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <semaphore.h>
 
 int main(int argc, char* argv[]) {
-    //semaphors
+    //semaphores
     //open
-    key_t key = ftok(".", '#');
-    int sid = semget(key, 1, 0);
-    //operations
-    struct sembuf lock = {0, -1, 0};
-    struct sembuf unlock[2] = {{0, 0, 0}, {0, 1, 0}};
+    sem_t* sid = sem_open("/sem", 0);
+    if (sid == SEM_FAILED) {
+        perror("Semaphore open");
+        exit(EXIT_FAILURE);
+    }
 
     //FIFO
     int fd = open("fifo", O_RDONLY | O_NONBLOCK);
@@ -24,16 +23,17 @@ int main(int argc, char* argv[]) {
     pid_t pid = getpid();
     while (1) {
         int num;
-        if (semop(sid, &lock, 1) == -1) { // lock FIFO
+        if (sem_wait(sid) == -1) { // lock FIFO
             perror("Lock FIFO");
             exit(EXIT_FAILURE);
         }
         int isRead = read(fd, &num, sizeof(int));
-        if (semop(sid, unlock, 2) == -1) { // unlock FIFO
+        if (sem_post(sid) == -1) { // unlock FIFO
             perror("Unlock FIFO");
             exit(EXIT_FAILURE);
         }
         if (isRead != -1 && isRead != 0) printf("Proccess %d read %d\n", pid, num);
     }
+    sem_close(sid);
     close(fd);
 }

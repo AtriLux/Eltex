@@ -4,15 +4,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
-#include <sys/sem.h>
-#include <sys/ipc.h>
-
-union semun {
-    int val;
-    struct semid_ds *buf;
-    unsigned short *array;
-    struct seminfo *_buf;
-};
+#include <semaphore.h>
 
 int main(int argc, char* argv[]) {
     if (argc == 1) {
@@ -24,13 +16,9 @@ int main(int argc, char* argv[]) {
     close(cr);
 
     //create semaphore 
-    key_t key = ftok(".", '#');
-    int sid = semget(key, 1, 0666 | IPC_CREAT);
-    struct sembuf lock = {0, -1, 0};
-    struct sembuf unlock[2] = {{0, 0, 0}, {0, 1, 0}};
-    union semun ar;
-    ar.val = 1;
-    if (semctl(sid, 0, SETVAL, ar) == -1) {
+    sem_unlink("/sem");
+    sem_t* sid = sem_open("/sem", O_CREAT, 0666, 1);
+    if (sid == SEM_FAILED) {
         perror("Semaphore create");
         exit(EXIT_FAILURE);
     }
@@ -47,11 +35,10 @@ int main(int argc, char* argv[]) {
         case -1:
             perror("Fork");
             exit(EXIT_FAILURE);
-            break;
         case 0:
             for (int i = 0; i < len; i++) {
                 
-                if (semop(sid, &lock, 1) == -1) { // lock file
+                if (sem_wait(sid) == -1) { // lock file
                     perror("Lock file");
                     exit(EXIT_FAILURE);
                 }
@@ -78,7 +65,7 @@ int main(int argc, char* argv[]) {
 
                 close(file);
 
-                if (semop(sid, unlock, 2) == -1) { // unlock file
+                if (sem_post(sid) == -1) { // unlock file
                     perror("Unlock file");
                     exit(EXIT_FAILURE);
                 }
@@ -88,8 +75,8 @@ int main(int argc, char* argv[]) {
                 write(fd[1], &num, sizeof(int));
             }
             close(fd[1]);
+            sem_close(sid);
             exit(EXIT_SUCCESS);
-            break;
         default:
             for (int i = 0; i < len; i++) {
 
@@ -98,7 +85,7 @@ int main(int argc, char* argv[]) {
                 read(fd[0], &num, sizeof(int));
                 printf("Num: %d\n", num);
 
-                if (semop(sid, &lock, 1) == -1) { // lock file
+                if (sem_wait(sid) == -1) { // lock file
                     perror("Lock file");
                     exit(EXIT_FAILURE);
                 }
@@ -117,13 +104,13 @@ int main(int argc, char* argv[]) {
                 close(file);
 
                 usleep(1000);
-                if (semop(sid, unlock, 2) == -1) { // unlock file
+                if (sem_post(sid) == -1) { // unlock file
                     perror("Unlock file");
                     exit(EXIT_FAILURE);
                 }
             }
             close(fd[0]);
+            sem_close(sid);
             exit(EXIT_SUCCESS);
-            break;
     }
 }

@@ -4,15 +4,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
-#include <sys/sem.h>
-#include <sys/ipc.h>
+#include <semaphore.h>
 
-union semun {
-    int val;
-    struct semid_ds *buf;
-    unsigned short *array;
-    struct seminfo *_buf;
-};
 
 int main(int argc, char* argv[]) {
     if (argc == 1) {
@@ -23,22 +16,17 @@ int main(int argc, char* argv[]) {
     int cr = creat("result.txt", S_IRUSR | S_IWUSR);
     close(cr);
 
-    //create semaphore 0 - for read [0,3], 1 - for write [0,1]
-    key_t key = ftok(".", '#');
-    int sid = semget(key, 2, 0666 | IPC_CREAT);
-    struct sembuf read_lock = {0, -1, 0};
-    struct sembuf read_unlock = {0, 1, 0};
-    struct sembuf write_lock = {1, -1, 0};
-    struct sembuf write_unlock[2] = {{1, 0, 0}, {1, 1, 0}};
-    union semun ar;
-    ar.val = 3;
-    if (semctl(sid, 0, SETVAL, ar) == -1) {
-        perror("Read semaphore create");
+    //semaphores
+    sem_unlink("/sem1");
+    sem_t* sid_write = sem_open("/sem1", O_CREAT, 0666, 1);
+    if (sid_write == SEM_FAILED) {
+        perror("Semaphore 1 create");
         exit(EXIT_FAILURE);
     }
-    ar.val = 1;
-    if (semctl(sid, 1, SETVAL, ar) == -1) {
-        perror("Write semaphore create");
+        sem_unlink("/sem2");
+    sem_t* sid_read = sem_open("/sem2", O_CREAT, 0666, 3);
+    if (sid_read == SEM_FAILED) {
+        perror("Semaphore 2 create");
         exit(EXIT_FAILURE);
     }
 
@@ -58,7 +46,7 @@ int main(int argc, char* argv[]) {
         case 0:
             for (int i = 0; i < len; i++) {
                 
-                if (semop(sid, &read_lock, 1) == -1) { // lock file
+                if (sem_wait(sid_read) == -1) { // lock file
                     perror("Lock file");
                     exit(EXIT_FAILURE);
                 }
@@ -86,7 +74,7 @@ int main(int argc, char* argv[]) {
                 close(file);
                 
                 sleep(1); // for tests
-                if (semop(sid, &read_unlock, 1) == -1) { // unlock file
+                if (sem_post(sid_read) == -1) { // unlock file
                     perror("Unlock FIFO");
                     exit(EXIT_FAILURE);
                 }
@@ -106,7 +94,7 @@ int main(int argc, char* argv[]) {
                 read(fd[0], &num, sizeof(int));
                 printf("Num: %d\n", num);
 
-                if (semop(sid, &write_lock, 1) == -1) { // lock file
+                if (sem_wait(sid_write) == -1) { // lock file
                     perror("Lock FIFO");
                     exit(EXIT_FAILURE);
                 }
@@ -125,7 +113,7 @@ int main(int argc, char* argv[]) {
                 close(file);
 
                 sleep(1); // for tests
-                if (semop(sid, write_unlock, 2) == -1) { // unlock file
+                if (sem_post(sid_write) == -1) { // unlock file
                     perror("Unlock FIFO");
                     exit(EXIT_FAILURE);
                 }
