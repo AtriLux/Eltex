@@ -9,12 +9,10 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include <signal.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 
-// функция обслуживания
-// подключившихся пользователей
+// функция обслуживания подключившихся пользователей
 void dostuff(int, int);
 // функция обработки ошибок
 void error(const char *msg) {
