@@ -50,11 +50,6 @@ int main(int argc, char **argv) {
         }
         /* Печатаем принятый текст на экране */
         printf("%s\n", line);
-        /* Принятый текст отправляем обратно по адресу отправителя */
-        if(sendto(sockfd, line, strlen(line)+1, 0, (struct sockaddr *) &cliaddr, clilen) < 0){
-            perror(NULL);
-            close(sockfd);
-            exit(EXIT_FAILURE);
-        } /* Уходим ожидать новую датаграмму*/
+        /* Уходим ожидать новую датаграмму*/
     }
 }

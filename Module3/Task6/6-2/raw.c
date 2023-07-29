@@ -8,9 +8,45 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+int count = 0;
+
+void printPacket(char* line, int port) {
+    struct in_addr sAddr_in, dAddr_in;
+    uint32_t sAddr = *(uint32_t*) (line+12),
+            dAddr = *(uint32_t*) (line+16);
+    sAddr_in.s_addr = sAddr;
+    dAddr_in.s_addr = dAddr;
+    uint16_t sPort = *(uint16_t*) (line+20),
+            dPort = *(uint16_t*) (line+22);
+    
+    if (htons(dPort) == port) {
+        /* Печатаем принятый текст на экране */
+        puts("----------------");
+        printf("Source Address: %s\n", inet_ntoa(sAddr_in));
+        printf("Destitation Address: %s\n", inet_ntoa(dAddr_in));
+        printf("Source port: %d\n", htons(sPort));
+        printf("Destitation port: %d\n", htons(dPort));
+        puts("----------------");
+        printf("Text:\n%s", line+28);
+        puts("----------------\n");
+
+
+        /* Печатаем принятый текст в файле */
+        uint16_t len = *(uint16_t*) (line+2);
+        char filename[20];
+        sprintf(filename, "%d", count);
+        strcat(filename, "_UDP");
+        
+        FILE* file = fopen(filename, "wb");
+        fwrite(line, sizeof(line[0]), htons(len), file);
+        fclose(file);
+        count++;
+    }
+}
+
 int main(int argc, char **argv) {
     if (argc != 2){
-        printf("Usage: ./server <port>\n");
+        printf("Usage: ./raw <port>\n");
         exit(EXIT_FAILURE);
     }
     int sockfd; /* Дескриптор сокета */
@@ -29,7 +65,7 @@ int main(int argc, char **argv) {
     servaddr.sin_port = htons(port);
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     /* Создаем UDP сокет */
-    if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) < 0){
+    if ((sockfd = socket(PF_INET, SOCK_RAW, IPPROTO_UDP)) < 0){
         perror(NULL); /* Печатаем сообщение об ошибке */
         exit(EXIT_FAILURE);
     }
@@ -39,6 +75,7 @@ int main(int argc, char **argv) {
         close(sockfd);
         exit(EXIT_FAILURE);
     }
+
     while(1) {
         /* Основной цикл обслуживания*/
         clilen = sizeof(cliaddr);
@@ -48,13 +85,9 @@ int main(int argc, char **argv) {
             close(sockfd);
             exit(EXIT_FAILURE);
         }
-        /* Печатаем принятый текст на экране */
-        printf("%s\n", line);
-        /* Принятый текст отправляем обратно по адресу отправителя */
-        if(sendto(sockfd, line, strlen(line)+1, 0, (struct sockaddr *) &cliaddr, clilen) < 0){
-            perror(NULL);
-            close(sockfd);
-            exit(EXIT_FAILURE);
-        } /* Уходим ожидать новую датаграмму*/
+
+        /* расшифровка и печать данных */
+        printPacket(line, port);
+         /* Уходим ожидать новую датаграмму*/
     }
 }
