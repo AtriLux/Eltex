@@ -9,5 +9,5 @@ Modules:
 <br /><br />
 ____
 
-❕P.S. Writing off homework is not cool, guys... 👀
+❕P.S. Copying homework is not cool, guys... 👀
 ![GitHub Insights](https://ic.wampi.ru/2023/07/29/GitHub-Insights.png)
