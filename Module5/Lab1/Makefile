@@ -1,3 +1,4 @@
+edit : static dynamic1 dynamic2
 #static library
 static : prog.o libstatic.a
 	gcc prog.o -L. -lstatic -o s_prog
